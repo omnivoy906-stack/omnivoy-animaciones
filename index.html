@@ -1,0 +1,684 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Cerebrito en Movimiento</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: cabecera + filtros por momento de la app + grilla de 100 escenarios; cada tarjeta = escenario oscuro y su ficha de uso */
+:root{
+  --night:#12040f; --surface:#1d0818; --stage:#2a0a22; --line:rgba(255,160,210,.16);
+  --ink:#ffe6f3; --muted:#c99ab4; --pink:#f04f9d; --gold:#ffd76a;
+  --f-display:"Bricolage Grotesque",ui-rounded,system-ui,sans-serif;
+  --f-body:"Figtree",system-ui,-apple-system,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+html,body{background:var(--night);color:var(--ink)}
+body{font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 56px}
+.wrap{max-width:1240px;margin:0 auto;display:grid;gap:22px}
+header{display:flex;flex-wrap:wrap;gap:16px 24px;align-items:end;justify-content:space-between}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(30px,6vw,52px);line-height:1;margin:0;letter-spacing:-.02em;text-wrap:balance}
+h1 em{font-style:normal;color:var(--pink)}
+.lede{margin:10px 0 0;color:var(--muted);max-width:62ch}
+button{font:600 14px var(--f-body);color:var(--ink);background:transparent;border:1px solid var(--line);
+  border-radius:999px;padding:9px 16px;cursor:pointer;transition:background .18s,border-color .18s,color .18s}
+button:hover{background:rgba(240,79,157,.14);border-color:var(--pink)}
+button:focus-visible,.stage:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.filters{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.filters button{flex:none;font-size:13px;padding:7px 13px}
+.filters button[aria-pressed="true"]{background:var(--pink);border-color:var(--pink);color:#fff}
+.filters .n{font:500 11px var(--f-mono);opacity:.75;margin-left:6px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;min-width:0;
+  content-visibility:auto;contain-intrinsic-size:auto 380px}
+.stage{position:relative;aspect-ratio:1/1;max-width:100%;cursor:pointer;overflow:hidden;
+  background:radial-gradient(circle at 50% 46%,#4a1238 0%,var(--stage) 48%,var(--night) 100%);
+  display:grid;place-items:center;padding:16% 9% 7%}
+.stage .cb{width:100%}
+.num{position:absolute;top:11px;left:13px;font:500 12px var(--f-mono);color:var(--muted);letter-spacing:.06em}
+.tag{font:600 11px var(--f-body);color:var(--pink);text-transform:uppercase;letter-spacing:.08em}
+.meta{padding:13px 15px 15px;display:grid;gap:5px;flex:1}
+.meta h2{font-family:var(--f-display);font-weight:600;font-size:19px;margin:0;line-height:1.15;text-wrap:balance}
+.meta p{margin:0;color:var(--muted);font-size:13.5px}
+.meta .row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:auto;padding-top:8px}
+.dur{font:500 12px var(--f-mono);color:var(--gold)}
+.meta button{padding:6px 12px;font-size:13px;white-space:nowrap}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));translate:-50% 0;background:var(--gold);color:#2a0a22;
+  font-weight:600;padding:10px 18px;border-radius:999px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+textarea.fallback{width:100%;height:120px;font:12px var(--f-mono);background:var(--night);color:var(--ink);border:1px solid var(--line);border-radius:10px}
+.paused .cb *,.off .cb *{animation-play-state:paused!important}
+</style>
+<style id="anim-css"></style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Cerebrito <em>en movimiento</em></h1>
+      <p class="lede">100 animaciones del personaje de Omni Voy en SVG + CSS, sin librerías, ordenadas por el momento de la app donde sirven. Toca un escenario para reiniciarla y usa «Copiar código» para pegarla.</p>
+    </div>
+    <button id="pause" type="button">Pausar todo</button>
+  </header>
+  <nav class="filters" id="filters" aria-label="Categorías"></nav>
+  <section class="grid" id="grid" aria-label="Animaciones"></section>
+</div>
+<div class="toast" id="toast" role="status">Código copiado</div>
+
+<script>
+(()=>{
+const FONT='Bricolage Grotesque,Nunito,system-ui,sans-serif';
+const HIDDEN=['eyes-happy','eyes-closed','eyes-wink','eyes-heart','eyes-star','eyes-dizzy','eyes-x','lids','mouth-smile','mouth-o','mouth-small','mouth-grin','mouth-tongue','mouth-flat','mouth-wavy','mouth-cat','mouth-yawn','brows-sad','brows-det'];
+const BASE=`.cb{position:relative}
+.cb svg{display:block;width:100%;height:auto;overflow:visible}
+.cb svg *{transform-box:view-box}
+.cb .fx *{transform-box:fill-box;transform-origin:center}
+${HIDDEN.map(c=>'.cb .'+c).join(',')}{opacity:0}
+.cb .rig{transform-origin:300px 500px}
+.cb .arm-l{transform-origin:110px 370px}
+.cb .arm-r{transform-origin:490px 370px}
+.cb .prop-c{transform-origin:0 0}
+.cb .eyes-open,.cb .blink{transform-origin:310px 262px}
+.cb .mouth-open{transform-origin:305px 335px}
+.cb .cheeks{transform-origin:308px 328px}
+.cb .brows{transform-origin:308px 180px}
+.cb .shadow{transform-origin:300px 540px}
+@keyframes cb-blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.08)}}
+@keyframes cb-talk{0%,100%{transform:scaleY(1)}10%{transform:scaleY(.35)}20%{transform:scaleY(.9)}30%{transform:scaleY(.5)}40%{transform:scaleY(1.1)}50%{transform:scaleY(.3)}60%{transform:scaleY(.85)}70%{transform:scaleY(.45)}80%{transform:scaleY(1)}90%{transform:scaleY(.4)}}
+@media (prefers-reduced-motion:reduce){.cb *{animation:none!important}}
+`;
+
+/* ---------- dibujo ---------- */
+const star='M0,-16 L4.5,-4.5 L16,0 L4.5,4.5 L0,16 L-4.5,4.5 L-16,0 L-4.5,-4.5Z';
+const heart='M0,14 C-26,-4 -18,-28 0,-14 C18,-28 26,-4 0,14Z';
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const at=(x,y,inner)=>`<g transform="translate(${x},${y})">${inner}</g>`;
+
+function hand(cx,cy,m){
+  const f=[195,125,100,75].map(a=>{const r=a*Math.PI/180,c=Math.cos(r)*m,s=Math.sin(r);
+    return `<line x1="${(cx+20*c).toFixed(1)}" y1="${(cy+20*s).toFixed(1)}" x2="${(cx+42*c).toFixed(1)}" y2="${(cy+42*s).toFixed(1)}"/>`}).join('');
+  return `<circle cx="${cx}" cy="${cy}" r="27" stroke="none"/>${f}`;
+}
+
+const PROPS={
+ book:`<path d="M0,-30 Q-22,-42 -44,-36 L-44,-86 Q-22,-92 0,-80Z" fill="#fff" stroke="#2b2f6b" stroke-width="5" stroke-linejoin="round"/><path d="M0,-30 Q22,-42 44,-36 L44,-86 Q22,-92 0,-80Z" fill="#f1ecff" stroke="#2b2f6b" stroke-width="5" stroke-linejoin="round"/><path d="M-34,-70 L-10,-74 M-34,-58 L-10,-62 M10,-74 L34,-70 M10,-62 L34,-58" stroke="#b7b1d6" stroke-width="4" stroke-linecap="round"/>`,
+ trophy:`<path d="M-30,-88 Q-52,-86 -46,-68 Q-42,-58 -28,-58 M30,-88 Q52,-86 46,-68 Q42,-58 28,-58" fill="none" stroke="#ffd76a" stroke-width="7"/><path d="M-30,-98 H30 V-72 Q30,-46 0,-42 Q-30,-46 -30,-72Z" fill="#ffd76a"/><rect x="-6" y="-44" width="12" height="16" fill="#e0a93a"/><rect x="-24" y="-30" width="48" height="13" rx="3" fill="#e0a93a"/><path d="M0,-86 l4,8 9,1 -7,6 2,9 -8,-5 -8,5 2,-9 -7,-6 9,-1Z" fill="#fff6d6"/>`,
+ mic:`<rect x="-9" y="-62" width="18" height="48" rx="7" fill="#2a2140"/><circle cy="-76" r="21" fill="#c9c3dd"/><path d="M-14,-82 H14 M-16,-74 H16 M-12,-66 H12" stroke="#8f88aa" stroke-width="3"/>`,
+ coffee:`<path class="fsteam" d="M-10,-84 q-8,-10 0,-20 t0,-20 M10,-84 q-8,-10 0,-20 t0,-20" fill="none" stroke="#ffe6f3" stroke-width="5" stroke-linecap="round" opacity=".8"/><path d="M-26,-74 H26 L20,-24 Q0,-18 -20,-24Z" fill="#fff"/><rect x="-24" y="-60" width="47" height="14" fill="#f04f9d"/><path d="M24,-64 q18,0 14,16 q-4,10 -18,8" fill="none" stroke="#fff" stroke-width="7"/><ellipse cy="-74" rx="26" ry="6" fill="#7a4a2e"/>`,
+ ticket:`<rect x="-44" y="-84" width="88" height="50" rx="7" fill="#8fd3ff"/><path d="M18,-80 V-38" stroke="#fff" stroke-width="3" stroke-dasharray="5 5"/><path d="M-30,-58 L4,-62 L10,-58 L4,-54Z M-14,-58 L-20,-70 L-14,-70 L-6,-58 L-14,-46 L-20,-46Z" fill="#2b2f6b"/>`,
+ pencil:`<g transform="rotate(-18)"><rect x="-8" y="-98" width="16" height="64" fill="#ffd76a"/><rect x="-8" y="-108" width="16" height="12" rx="3" fill="#ff8fbf"/><path d="M-8,-34 L8,-34 L0,-14Z" fill="#f3c9a0"/><path d="M-3,-22 L3,-22 L0,-14Z" fill="#2a2140"/></g>`,
+ flag:`<rect x="-3" y="-118" width="6" height="104" rx="3" fill="#e7dbe5"/><path d="M3,-116 L62,-98 L3,-80Z" fill="#ffd76a"/>`,
+ phone:`<rect x="-21" y="-92" width="42" height="72" rx="9" fill="#2a2140"/><rect x="-15" y="-85" width="30" height="52" rx="3" fill="#8fd3ff"/>`,
+ bag:`<path d="M-14,-74 Q-14,-98 0,-98 Q14,-98 14,-74" fill="none" stroke="#e0a93a" stroke-width="6"/><rect x="-32" y="-76" width="64" height="58" rx="7" fill="#ffd76a"/><path d="M-10,-50 l10,-10 10,10" fill="none" stroke="#e0a93a" stroke-width="5" stroke-linecap="round"/>`,
+ magnifier:`<line x1="-2" y1="-44" x2="0" y2="-16" stroke="#2a2140" stroke-width="11" stroke-linecap="round"/><circle cy="-70" r="25" fill="#8fd3ff" fill-opacity=".35" stroke="#2a2140" stroke-width="8"/>`
+};
+
+function brain(uid,fx={},prop=''){
+  const body=[[205,110,80],[305,95,88],[405,110,80],[125,175,72],[485,175,72],[95,265,70],[510,265,70],[120,350,68],[485,350,68],[195,400,68],[300,410,70],[405,400,68]]
+    .map(([x,y,r])=>`<circle cx="${x}" cy="${y}" r="${r}"/>`).join('');
+  const spiral='M0,0 a5,5 0 0,1 10,0 a10,10 0 0,1 -20,0 a15,15 0 0,1 30,0 a20,20 0 0,1 -40,0 a25,25 0 0,1 50,0';
+  const mouthD='M262,332 C285,342 325,342 348,330 C348,370 330,392 305,392 C280,392 262,370 262,332Z';
+  return `<svg viewBox="0 0 600 560" role="img" aria-label="Cerebrito de Omni Voy">
+<defs><clipPath id="${uid}-m"><path d="${mouthD}"/></clipPath></defs>
+<ellipse class="shadow" cx="300" cy="540" rx="150" ry="14" fill="#000" fill-opacity=".38"/>
+<g class="fx">${fx.back||''}</g>
+<g class="rig">
+ <g class="body" fill="#f04f9d"><ellipse cx="300" cy="265" rx="215" ry="165"/>${body}</g>
+ <ellipse cx="225" cy="88" rx="62" ry="22" fill="#fff" fill-opacity=".10" transform="rotate(-14 225 88)"/>
+ <g class="folds" fill="none" stroke="#c9367f" stroke-width="9" stroke-linecap="round">
+  <path d="M305,30 Q290,62 305,95 Q318,128 300,160"/><path d="M160,128 Q186,100 222,104"/><path d="M238,66 Q262,52 286,60"/>
+  <path d="M328,60 Q352,50 376,64"/><path d="M392,104 Q426,98 450,124"/><path d="M84,222 Q100,198 128,200"/><path d="M474,200 Q500,196 518,222"/>
+  <path d="M60,300 Q66,322 82,334"/><path d="M542,300 Q536,322 520,334"/><path d="M170,436 Q198,452 230,444"/><path d="M372,444 Q402,452 430,436"/>
+ </g>
+ <g class="cheeks" fill="#e8287f" fill-opacity=".6"><ellipse cx="170" cy="328" rx="36" ry="22"/><ellipse cx="446" cy="328" rx="36" ry="22"/></g>
+ <g fill="none" stroke="#c3307a" stroke-width="10" stroke-linecap="round">
+  <g class="brows"><path d="M196,186 Q226,166 258,180"/><path d="M358,180 Q390,166 420,186"/></g>
+  <g class="brows-sad"><path d="M196,190 Q226,178 258,164"/><path d="M358,164 Q390,178 420,190"/></g>
+  <g class="brows-det"><path d="M196,166 Q228,170 258,190"/><path d="M358,190 Q388,170 420,166"/></g>
+ </g>
+ <g class="eyes">
+  <g class="eyes-open"><g class="blink">
+   <circle cx="238" cy="262" r="58" fill="#fff"/><circle cx="380" cy="262" r="58" fill="#fff"/>
+   <g class="pupils"><circle cx="244" cy="260" r="42" fill="#1c0e1a"/><circle cx="386" cy="260" r="42" fill="#1c0e1a"/>
+    <circle cx="261" cy="242" r="13" fill="#fff"/><circle cx="403" cy="242" r="13" fill="#fff"/>
+    <circle cx="232" cy="280" r="6" fill="#fff"/><circle cx="374" cy="280" r="6" fill="#fff"/></g>
+  </g></g>
+  <g class="lids"><path d="M178,262 A60,60 0 0 1 298,262Z M320,262 A60,60 0 0 1 440,262Z" fill="#f04f9d"/><path d="M182,262 H294 M324,262 H436" stroke="#1c0e1a" stroke-width="8" stroke-linecap="round"/></g>
+  <g class="eyes-happy" fill="none" stroke="#1c0e1a" stroke-width="13" stroke-linecap="round"><path d="M200,272 Q238,222 276,272"/><path d="M342,272 Q380,222 418,272"/></g>
+  <g class="eyes-closed" fill="none" stroke="#1c0e1a" stroke-width="12" stroke-linecap="round"><path d="M202,262 Q238,292 274,262"/><path d="M344,262 Q380,292 416,262"/></g>
+  <g class="eyes-wink"><circle cx="238" cy="262" r="58" fill="#fff"/><circle cx="244" cy="260" r="42" fill="#1c0e1a"/><circle cx="261" cy="242" r="13" fill="#fff"/><path d="M342,272 Q380,222 418,272" fill="none" stroke="#1c0e1a" stroke-width="13" stroke-linecap="round"/></g>
+  <g class="eyes-heart" fill="#ff3b6b"><path transform="translate(238,268) scale(2.2)" d="${heart}"/><path transform="translate(380,268) scale(2.2)" d="${heart}"/><circle cx="218" cy="248" r="8" fill="#fff" fill-opacity=".8"/><circle cx="360" cy="248" r="8" fill="#fff" fill-opacity=".8"/></g>
+  <g class="eyes-star" fill="#ffd76a" stroke="#c98a1c" stroke-width=".8"><path transform="translate(238,262) scale(3.3)" d="${star}"/><path transform="translate(380,262) scale(3.3)" d="${star}"/></g>
+  <g class="eyes-dizzy"><circle cx="238" cy="262" r="58" fill="#fff"/><circle cx="380" cy="262" r="58" fill="#fff"/><g fill="none" stroke="#1c0e1a" stroke-width="7" stroke-linecap="round"><path class="sp" transform="translate(232,262)" d="${spiral}"/><path class="sp" transform="translate(374,262)" d="${spiral}"/></g></g>
+  <g class="eyes-x" stroke="#1c0e1a" stroke-width="13" stroke-linecap="round"><path d="M214,238 L262,286 M262,238 L214,286 M356,238 L404,286 M404,238 L356,286"/></g>
+ </g>
+ <g class="mouths" fill="#8c1748" stroke-linecap="round">
+  <g class="mouth-open"><path d="${mouthD}"/><ellipse cx="305" cy="386" rx="28" ry="16" fill="#f59ab8" clip-path="url(#${uid}-m)"/></g>
+  <path class="mouth-smile" d="M270,340 Q305,378 340,340" fill="none" stroke="#8c1748" stroke-width="11"/>
+  <ellipse class="mouth-o" cx="305" cy="362" rx="20" ry="25"/>
+  <path class="mouth-small" d="M282,364 Q305,350 328,364" fill="none" stroke="#8c1748" stroke-width="10"/>
+  <g class="mouth-grin"><path d="M246,326 C282,346 328,346 364,324 C362,384 336,410 305,410 C274,410 248,384 246,326Z"/><path d="M256,334 C288,348 322,348 354,332 L352,346 C322,358 288,358 258,348Z" fill="#fff"/><ellipse cx="305" cy="398" rx="30" ry="12" fill="#f59ab8"/></g>
+  <g class="mouth-tongue"><path d="M288,356 Q290,392 306,392 Q322,392 322,356Z" fill="#f59ab8"/><path d="M270,342 Q305,372 340,342" fill="none" stroke="#8c1748" stroke-width="11"/></g>
+  <path class="mouth-flat" d="M276,356 H334" fill="none" stroke="#8c1748" stroke-width="10"/>
+  <path class="mouth-wavy" d="M268,360 q9,-10 18,0 t18,0 t18,0 t18,0" fill="none" stroke="#8c1748" stroke-width="9"/>
+  <path class="mouth-cat" d="M270,346 Q287,368 305,350 Q323,368 340,346" fill="none" stroke="#8c1748" stroke-width="10"/>
+  <ellipse class="mouth-yawn" cx="305" cy="366" rx="30" ry="40"/>
+ </g>
+ <g class="arm-l" fill="#e5468f" stroke="#e5468f" stroke-linecap="round"><path d="M110,370 Q85,415 70,452" fill="none" stroke-width="34"/><g stroke-width="15">${hand(66,462,1)}</g></g>
+ <g class="arm-r" fill="#e5468f" stroke="#e5468f" stroke-linecap="round"><path d="M490,370 Q515,415 530,452" fill="none" stroke-width="34"/><g stroke-width="15">${hand(534,462,-1)}</g>${prop?`<g transform="translate(534,462) scale(1.35)" stroke="none"><g class="prop-c">${prop}</g></g>`:''}</g>
+ <g class="fx">${fx.in||''}</g>
+</g>
+<g class="fx">${fx.out||''}</g>
+</svg>`;
+}
+
+/* ---------- utilidades CSS ---------- */
+const kf=(name,frames)=>`@keyframes ${name}{${frames.map(([p,v])=>`${p}{${v}}`).join('')}}\n`;
+const T=(y=0,r=0,sx=1,sy=1,x=0)=>`translate(${x}px,${y}px) rotate(${r}deg) scale(${sx},${sy})`;
+const rng=(arg,a,b)=>arg?arg.split('-').map(Number):[a,b];
+
+/* cuerpos: [porcentajes, y, rot, sx, sy, x] */
+const BODY={
+ still:{f:[['0%,100%',0]]},
+ float:{f:[['0%,100%',0,-2],['50%',-16,2]]},
+ floatHigh:{f:[['0%,100%',-10,-3],['50%',-40,3]]},
+ bob:{f:[['0%,100%',0],['50%',-10]]},
+ bounce:{f:[['0%,70%,100%',0],['15%',0,0,1.06,.92],['35%',-50,0,.96,1.05],['55%',0,0,1.05,.94]],e:'cubic-bezier(.3,.7,.4,1)'},
+ bigjump:{f:[['0%,80%,100%',0],['15%',0,0,1.07,.9],['35%,52%',-70,0,.97,1.04],['68%',0,0,1.07,.92]],e:'cubic-bezier(.3,.7,.4,1)'},
+ hop2:{f:[['0%,70%,100%',0],['10%,34%,58%',0,0,1.05,.93],['22%,46%',-36,0,.97,1.04]]},
+ sway:{f:[['0%,100%',0,-6],['50%',0,6]]},
+ nod:{f:[['0%,60%,100%',0],['15%,45%',8,0,1.03,.94],['30%',-4]]},
+ shake:{f:[['0%,60%,100%',0],['10%',0,-7],['20%',0,7],['30%',0,-6],['40%',0,6],['50%',0,-3]]},
+ tilt:{f:[['0%,100%',0],['30%,70%',0,-10]]},
+ tiltR:{f:[['0%,100%',0],['30%,70%',0,10]]},
+ spin:{o:'300px 280px',f:[['0%',0],['12%',8,0,1.05,.92],['40%,55%',-60,360],['70%',0,360,1.05,.93],['80%,100%',0,360]],e:'cubic-bezier(.3,.7,.4,1)'},
+ wobble:{f:[['0%,100%',0],['20%',0,0,1.08,.92],['40%',0,0,.94,1.06],['60%',0,0,1.04,.96],['80%',0,0,.98,1.02]]},
+ breathe:{f:[['0%,100%',0],['50%',3,0,1.035,.965]]},
+ shiver:{f:[['0%,100%',0],['10%,50%,90%',0,-1.5,1,1,-3],['30%,70%',0,1.5,1,1,3]],e:'linear'},
+ dance:{f:[['0%,100%',0,-8,1,1,-14],['25%,75%',-16],['50%',0,8,1,1,14]]},
+ walk:{f:[['0%,50%,100%',0,4],['25%,75%',-12,4]]},
+ peek:{f:[['0%,100%',330],['22%',-12],['30%,78%',0],['92%',330]]},
+ popin:{o:'300px 480px',f:[['0%',0,0,0,0],['16%',0,0,1.12,1.12],['26%',0,0,.95,.95],['34%,86%',0,0,1,1],['100%',0,0,0,0]]},
+ popout:{o:'300px 480px',f:[['0%,40%',0],['52%',0,0,1.1,1.1],['66%,82%',0,0,0,0],['96%',0,0,1.05,1.05],['100%',0]]},
+ heartbeat:{o:'300px 300px',f:[['0%,30%,60%,100%',0],['10%,40%',0,0,1.07,1.07]]},
+ droop:{f:[['0%,100%',0],['45%,80%',10,8,1.02,.95]]},
+ rocket:{f:[['0%,78%,100%',0],['12%',0,0,1.08,.9],['38%',-580,0,.9,1.15],['38.5%',580],['62%',-10],['70%',0,0,1.05,.95]]},
+ lean:{f:[['0%,100%',-4,-6],['50%',-10,-8]]},
+ proud:{f:[['0%,100%',0],['30%,80%',-6,0,1.05,1.05]]},
+ laugh:{f:[['0%,80%,100%',0],['10%,30%,50%,70%',4,-3,1.03,.96],['20%,40%,60%',-2,3]]},
+ stretch:{f:[['0%,100%',0],['30%,60%',-10,0,.95,1.1],['75%',0,0,1.04,.96]]},
+ jiggle:{f:[['0%,40%,100%',0],['5%,15%,25%',0,-4,1.03,.97],['10%,20%,30%',0,4,.97,1.03]]},
+ shy:{f:[['0%,100%',0,-4,1,1,-4],['50%',2,-8,1,1,-8]]},
+ shrug:{f:[['0%,60%,100%',0],['20%,45%',-10,0,1.03,.97]]},
+ sink:{f:[['0%,100%',0],['40%,80%',14,0,1.04,.92]]}
+};
+/* brazos: grados para el izquierdo; el derecho se espeja */
+const ARM={
+ rest:[['0%,100%',0]], relax:[['0%,100%',-4],['50%',6]], up:[['0%,100%',130]], cheer:[['0%,100%',120],['50%',148]],
+ out:[['0%,100%',60]], wave:[['0%,100%',0],['15%',125],['25%',100],['35%',135],['45%',100],['55%',135],['68%',115],['85%',0]],
+ waveFast:[['0%,100%',110],['50%',140]], flap:[['0%,100%',40],['50%',100]], chin:[['0%,100%',-95],['50%',-102]],
+ ear:[['0%,100%',150],['50%',144]], point:[['0%,100%',55],['50%',62]], thumb:[['0%,100%',62],['50%',56]],
+ hold:[['0%,100%',-70],['50%',-66]], hug:[['0%,100%',-60],['50%',-78]], clap:[['0%,100%',-55],['50%',-82]],
+ facepalm:[['0%,15%,85%,100%',0],['30%,70%',-122]], scratch:[['0%,100%',146],['50%',156]], pump:[['0%,100%',125],['50%',85]],
+ run:[['0%,100%',35],['50%',-35]], swipe:[['0%,100%',30],['50%',90]], stretchUp:[['0%,100%',0],['30%,60%',160],['78%',0]],
+ hips:[['0%,100%',-20]], reach:[['0%,100%',95],['50%',102]], dance:[['0%,100%',30],['50%',110]],
+ scribble:[['0%,100%',-62],['25%',-72],['50%',-60],['75%',-74]]
+};
+const PUP={
+ look:{d:6,f:[['0%,20%,85%,100%','0,0'],['30%,45%','-9px,3px'],['55%,72%','9px,-4px']]},
+ up:{f:[['0%,100%','11px,-13px']]}, down:{f:[['0%,100%','-4px,12px']]}, left:{f:[['0%,100%','-12px,2px']]}, right:{f:[['0%,100%','12px,0']]},
+ roll:{d:2,f:[['0%,100%','0,-12px'],['25%','12px,0'],['50%','0,12px'],['75%','-12px,0']],e:'linear'},
+ read:{d:2,f:[['0%,100%','-11px,7px'],['50%','11px,7px']]}
+};
+const EV={open:['eyes-open'],happy:['eyes-happy'],closed:['eyes-closed'],wink:['eyes-wink'],heart:['eyes-heart'],star:['eyes-star'],dizzy:['eyes-dizzy'],x:['eyes-x'],lids:['eyes-open','lids'],big:['eyes-open']};
+const MV={open:['mouth-open'],talk:['mouth-open'],smile:['mouth-smile'],o:['mouth-o'],small:['mouth-small'],grin:['mouth-grin'],tongue:['mouth-tongue'],flat:['mouth-flat'],wavy:['mouth-wavy'],cat:['mouth-cat'],yawn:['mouth-yawn']};
+const ALLV=[...new Set([...Object.values(EV).flat(),...Object.values(MV).flat()])];
+
+/* ---------- efectos ---------- */
+const rise=(k,name)=>kf(`${k}-${name}`,[['0%','opacity:0;transform:translateY(16px) scale(.6)'],['25%','opacity:1'],['100%','opacity:0;transform:translateY(-90px) scale(1)']]);
+const FX={
+ stars:(P,k,d,arg)=>{const[a,b]=rng(arg,28,75);return{out:[[70,140,0],[540,110,.04],[470,10,.08],[120,30,.06]].map(([x,y,dl])=>at(x,y,`<path class="fs" d="${star}" fill="#ffd76a" style="animation-delay:${(dl*d).toFixed(2)}s"/>`)).join(''),
+  css:`${P} .fs{opacity:0;animation:${k}-fs ${d}s ease-out infinite}\n`+kf(`${k}-fs`,[[`0%,${a}%`,'opacity:0;transform:scale(0) rotate(0)'],[`${a+10}%`,'opacity:1;transform:scale(1.3) rotate(45deg)'],[`${b-12}%`,'opacity:1;transform:scale(1) rotate(90deg)'],[`${b}%,100%`,'opacity:0;transform:scale(0) rotate(120deg)']])}},
+ sparkle:(P,k)=>({out:[[50,200,'#fff'],[566,220,'#ffd76a'],[110,40,'#ffd76a'],[505,50,'#fff'],[300,-36,'#ffd1ea']].map(([x,y,c],i)=>at(x,y,`<path class="fk" d="${star}" fill="${c}" transform="scale(.7)" style="animation-delay:${(i*.36).toFixed(2)}s"/>`)).join(''),
+  css:`${P} .fk{opacity:0;animation:${k}-fk 1.8s ease-in-out infinite}\n`+kf(`${k}-fk`,[['0%,100%','opacity:0;transform:scale(.3) rotate(0)'],['50%','opacity:1;transform:scale(1) rotate(45deg)']])}),
+ hearts:(P,k)=>({out:[[240,0],[330,-20],[410,10],[180,30]].map(([x,y],i)=>at(x,y,`<path class="fh" d="${heart}" fill="#ff4d7d" transform="scale(1.4)" style="animation-delay:${(i*.6).toFixed(1)}s"/>`)).join(''),
+  css:`${P} .fh{opacity:0;animation:${k}-fh 2.4s ease-out infinite}\n`+rise(k,'fh')}),
+ notes:(P,k)=>({out:[[480,70],[540,20],[90,60]].map(([x,y],i)=>at(x,y,`<g class="fn" style="animation-delay:${(i*.7).toFixed(1)}s"><ellipse rx="12" ry="9" transform="rotate(-20)" fill="#ffd1ea"/><rect x="8" y="-44" width="5" height="44" fill="#ffd1ea"/><path d="M13,-44 Q32,-34 24,-16" fill="none" stroke="#ffd1ea" stroke-width="5" stroke-linecap="round"/></g>`)).join(''),
+  css:`${P} .fn{opacity:0;animation:${k}-fn 2.2s ease-out infinite}\n`+kf(`${k}-fn`,[['0%','opacity:0;transform:translate(0,14px) rotate(-10deg)'],['25%','opacity:1'],['100%','opacity:0;transform:translate(16px,-70px) rotate(12deg)']])}),
+ dots:(P,k)=>({out:[[468,72,9],[506,40,12],[550,4,16]].map(([x,y,r],i)=>at(x,y,`<circle class="fd" r="${r}" fill="#ffd1ea" style="animation-delay:${i*.25}s"/>`)).join(''),
+  css:`${P} .fd{animation:${k}-fd 1.5s ease-in-out infinite}\n`+kf(`${k}-fd`,[['0%,100%','opacity:.25;transform:scale(.7)'],['40%','opacity:1;transform:scale(1.1)']])}),
+ wavesOut:(P,k,d,c='#ffd1ea')=>({out:[[588,330,'M0,-18 Q12,0 0,18'],[606,330,'M0,-32 Q20,0 0,32'],[626,330,'M0,-46 Q26,0 0,46']].map(([x,y,p],i)=>at(x,y,`<path class="fw" d="${p}" style="animation-delay:${i*.2}s"/>`)).join(''),
+  css:`${P} .fw{fill:none;stroke:${c};stroke-width:7;stroke-linecap:round;opacity:0;animation:${k}-fw 1.2s ease-out infinite}\n`+kf(`${k}-fw`,[['0%','opacity:0;transform:translateX(-6px)'],['30%','opacity:1'],['100%','opacity:0;transform:translateX(10px)']])}),
+ wavesIn:(P,k)=>({out:[[596,268,'M0,-16 Q-10,0 0,16',.4],[618,268,'M0,-28 Q-18,0 0,28',.2],[640,268,'M0,-40 Q-26,0 0,40',0]].map(([x,y,p,dl])=>at(x,y,`<path class="fv" d="${p}" style="animation-delay:${dl}s"/>`)).join(''),
+  css:`${P} .fv{fill:none;stroke:#8fd3ff;stroke-width:7;stroke-linecap:round;opacity:0;animation:${k}-fv 1.6s ease-in infinite}\n`+kf(`${k}-fv`,[['0%','opacity:0;transform:translateX(14px)'],['40%','opacity:1'],['100%','opacity:0;transform:translateX(-10px)']])}),
+ zzz:(P,k)=>({out:[[480,130,34,'z'],[516,86,46,'z'],[560,36,60,'Z']].map(([x,y,s,t],i)=>at(x,y,`<text class="fz" font-family="${FONT}" font-weight="800" font-size="${s}" fill="#ffd1ea" style="animation-delay:${i*.8}s">${t}</text>`)).join(''),
+  css:`${P} .fz{opacity:0;animation:${k}-fz 2.4s ease-out infinite}\n`+kf(`${k}-fz`,[['0%','opacity:0;transform:translate(0,10px) scale(.6)'],['30%','opacity:1'],['100%','opacity:0;transform:translate(14px,-30px) scale(1)']])}),
+ drop:(P,k,d)=>({in:at(478,150,`<path class="fdr" d="M0,-18 C8,-6 12,2 12,8 A12,12 0 0 1 -12,8 C-12,2 -8,-6 0,-18Z" fill="#8fd3ff"/>`),
+  css:`${P} .fdr{opacity:0;animation:${k}-fdr ${d}s ease-in infinite}\n`+kf(`${k}-fdr`,[['0%,8%','opacity:0;transform:translateY(-6px) scale(.5)'],['16%','opacity:1;transform:translateY(0) scale(1)'],['55%','opacity:1;transform:translateY(34px) scale(1)'],['64%,100%','opacity:0;transform:translateY(44px) scale(.8)']])}),
+ tears:(P,k)=>({in:[[196,312,0],[424,312,.7]].map(([x,y,dl])=>at(x,y,`<path class="ft" d="M0,-12 C6,-4 9,2 9,6 A9,9 0 0 1 -9,6 C-9,2 -6,-4 0,-12Z" fill="#8fd3ff" style="animation-delay:${dl}s"/>`)).join(''),
+  css:`${P} .ft{opacity:0;animation:${k}-ft 1.6s ease-in infinite}\n`+kf(`${k}-ft`,[['0%','opacity:0;transform:translateY(0) scale(.5)'],['20%','opacity:1;transform:translateY(0) scale(1)'],['100%','opacity:0;transform:translateY(70px) scale(1)']])}),
+ confetti:(P,k)=>{const cols=['#ffd76a','#ffd1ea','#8fd3ff','#ffffff','#f04f9d'];let s='';
+  for(let i=0;i<16;i++){s+=at(40+i*34+(i%3)*6,-20-(i%4)*22,`<rect class="fc" x="-6" y="-3" width="12" height="7" rx="2" fill="${cols[i%5]}" style="animation-delay:${((i*.37)%2.6).toFixed(2)}s"/>`);}
+  return{out:s,css:`${P} .fc{opacity:0;animation:${k}-fc 2.6s ease-in infinite}\n`+kf(`${k}-fc`,[['0%','opacity:0;transform:translateY(0) rotate(0)'],['10%','opacity:1'],['100%','opacity:0;transform:translateY(320px) rotate(540deg)']])}},
+ ring:(P,k,d,arg)=>{const[a,b]=rng(arg,55,85);return{back:`<circle class="fr" cx="300" cy="280" r="230" fill="none" stroke="#ffd76a" stroke-width="6"/>`,
+  css:`${P} .fr{opacity:0;animation:${k}-fr ${d}s ease-out infinite}\n`+kf(`${k}-fr`,[[`0%,${a}%`,'opacity:0;transform:scale(.3)'],[`${a+4}%`,'opacity:1'],[`${b}%,100%`,'opacity:0;transform:scale(1.25)']])}},
+ bulb:(P,k,d,arg)=>{const[a,b]=rng(arg,20,88);return{out:at(300,-58,`<g class="fb"><g class="fbr" stroke="#ffd76a" stroke-width="6" stroke-linecap="round"><path d="M0,-52 V-66 M37,-37 L47,-47 M-37,-37 L-47,-47 M52,0 H66 M-52,0 H-66"/></g><circle r="34" fill="#ffd76a"/><path d="M-12,4 Q0,-16 12,4" fill="none" stroke="#fff6d6" stroke-width="5" stroke-linecap="round"/><rect x="-15" y="30" width="30" height="20" rx="5" fill="#b9a6b8"/></g>`),
+  css:`${P} .fb{opacity:0;animation:${k}-fb ${d}s cubic-bezier(.3,1.4,.5,1) infinite}\n${P} .fbr{animation:${k}-fbr 1s ease-in-out infinite alternate}\n`+kf(`${k}-fb`,[[`0%,${a}%`,'opacity:0;transform:scale(0)'],[`${a+8}%`,'opacity:1;transform:scale(1.15)'],[`${a+12}%,${b}%`,'opacity:1;transform:scale(1)'],[`${b+6}%,100%`,'opacity:0;transform:scale(.6)']])+kf(`${k}-fbr`,[['from','opacity:.4'],['to','opacity:1']])}},
+ question:(P,k)=>({out:[[470,50,64],[540,0,46]].map(([x,y,s],i)=>at(x,y,`<text class="fq" text-anchor="middle" font-family="${FONT}" font-weight="800" font-size="${s}" fill="#ffd76a" style="animation-delay:${i*.5}s">?</text>`)).join(''),
+  css:`${P} .fq{animation:${k}-fq 2s ease-in-out infinite}\n`+kf(`${k}-fq`,[['0%,100%','opacity:.5;transform:translateY(0) rotate(-10deg)'],['50%','opacity:1;transform:translateY(-12px) rotate(10deg)']])}),
+ bang:(P,k,d,arg)=>{const[a,b]=rng(arg,12,84);return{out:at(480,6,`<g class="fx-b"><circle r="36" fill="#ffd76a"/><text y="16" text-anchor="middle" font-family="${FONT}" font-size="48" font-weight="800" fill="#3a0b26">!</text></g>`),
+  css:`${P} .fx-b{opacity:0;animation:${k}-bg ${d}s cubic-bezier(.3,1.4,.5,1) infinite}\n`+kf(`${k}-bg`,[[`0%,${a}%`,'opacity:0;transform:scale(0)'],[`${a+12}%`,'opacity:1;transform:scale(1.15)'],[`${a+18}%,${b-10}%`,'opacity:1;transform:scale(1)'],[`${b}%,100%`,'opacity:0;transform:scale(.6)']])}},
+ bubble:(P,k,d,text)=>{const n=[...text].length,fs=n>15?34:40,w=Math.round(n*fs*.55+52),h=fs+34,cx=Math.round(w>420?300:Math.min(430,628-w/2));
+  return{out:at(cx,-30,`<g class="fbu"><rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="${h/2}" fill="#fff"/><path d="M${-w/2+40},${h/2-6} L${-w/2+20},${h/2+26} L${-w/2+66},${h/2-6}Z" fill="#fff"/><text y="${Math.round(fs*.35)}" text-anchor="middle" font-family="${FONT}" font-weight="800" font-size="${fs}" fill="#3a0b26">${esc(text)}</text></g>`),
+  css:`${P} .fbu{opacity:0;animation:${k}-fbu ${d}s ease-out infinite}\n`+kf(`${k}-fbu`,[['0%,6%','opacity:0;transform:scale(.4)'],['12%','opacity:1;transform:scale(1.08)'],['16%,86%','opacity:1;transform:scale(1)'],['92%,100%','opacity:0;transform:scale(.8)']])}},
+ badge:(P,k,d,text)=>{const n=[...text].length,w=Math.round(n*24+56);
+  return{out:at(300,-54,`<g class="fba"><rect x="${-w/2}" y="-30" width="${w}" height="60" rx="30" fill="#ffd76a"/><text y="13" text-anchor="middle" font-family="${FONT}" font-weight="800" font-size="38" fill="#3a0b26">${esc(text)}</text></g>`),
+  css:`${P} .fba{opacity:0;animation:${k}-fba ${d}s ease-out infinite}\n`+kf(`${k}-fba`,[['0%,14%','opacity:0;transform:translateY(24px) scale(.7)'],['24%','opacity:1;transform:translateY(0) scale(1.08)'],['30%,84%','opacity:1;transform:translateY(0) scale(1)'],['96%,100%','opacity:0;transform:translateY(-14px) scale(1)']])}},
+ fire:(P,k)=>({out:at(78,110,`<g class="ff"><path d="M0,-70 C28,-36 34,-12 24,10 C16,28 -16,28 -24,10 C-34,-12 -12,-28 0,-70Z" fill="#ff8a3d"/><path d="M0,-34 C14,-16 16,-2 10,10 C6,18 -6,18 -10,10 C-16,-2 -6,-14 0,-34Z" fill="#ffd76a"/></g>`),
+  css:`${P} .ff{transform-origin:50% 100%;animation:${k}-ff .7s ease-in-out infinite alternate}\n`+kf(`${k}-ff`,[['from','transform:scale(1,.92) rotate(-3deg)'],['to','transform:scale(.94,1.08) rotate(3deg)']])}),
+ crown:(P,k,d)=>({in:at(305,6,`<g class="fcr"><path d="M-56,22 L-62,-32 L-28,-4 L0,-48 L28,-4 L62,-32 L56,22Z" fill="#ffd76a" stroke="#e0a93a" stroke-width="5" stroke-linejoin="round"/><circle cx="0" cy="2" r="8" fill="#8fd3ff"/><circle cx="-32" cy="8" r="6" fill="#f04f9d"/><circle cx="32" cy="8" r="6" fill="#f04f9d"/></g>`),
+  css:`${P} .fcr{animation:${k}-fcr ${d}s ease-out infinite}\n`+kf(`${k}-fcr`,[['0%','opacity:0;transform:translateY(-150px)'],['18%','opacity:1;transform:translateY(0)'],['23%','transform:translateY(0) scale(1.1,.88)'],['28%,88%','opacity:1;transform:translateY(0) scale(1)'],['100%','opacity:0;transform:translateY(-150px)']])}),
+ check:(P,k,d,arg)=>{const[a,b]=rng(arg,15,86);return{out:at(510,40,`<g class="fck"><circle r="40" fill="#6ee7a8"/><path d="M-18,0 L-5,13 L19,-14" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/></g>`),
+  css:`${P} .fck{opacity:0;animation:${k}-fck ${d}s cubic-bezier(.3,1.4,.5,1) infinite}\n`+kf(`${k}-fck`,[[`0%,${a}%`,'opacity:0;transform:scale(0) rotate(-30deg)'],[`${a+10}%`,'opacity:1;transform:scale(1.15) rotate(0)'],[`${a+15}%,${b}%`,'opacity:1;transform:scale(1)'],[`${b+8}%,100%`,'opacity:0;transform:scale(.6)']])}},
+ speed:(P,k)=>({out:[[-10,190,90],[-30,260,120],[-10,330,80],[-40,400,110]].map(([x,y,l],i)=>`<line class="fsp" x1="${x}" y1="${y}" x2="${x+l}" y2="${y}" stroke="#ffd1ea" stroke-width="7" stroke-linecap="round" style="animation-delay:${i*.15}s"/>`).join(''),
+  css:`${P} .fsp{opacity:0;animation:${k}-fsp .8s linear infinite}\n`+kf(`${k}-fsp`,[['0%','opacity:0;transform:translateX(40px)'],['30%','opacity:.9'],['100%','opacity:0;transform:translateX(-40px)']])}),
+ dust:(P,k,d,arg)=>{const a=+(arg||68);return{out:[[190,528],[410,528],[150,520],[450,520]].map(([x,y],i)=>`<circle class="fdu" cx="${x}" cy="${y}" r="${16-i*2}" fill="#ffd1ea"/>`).join(''),
+  css:`${P} .fdu{opacity:0;animation:${k}-fdu ${d}s ease-out infinite}\n`+kf(`${k}-fdu`,[[`0%,${a-1}%`,'opacity:0;transform:scale(.3)'],[`${a+2}%`,'opacity:.7;transform:scale(1)'],[`${a+14}%,100%`,'opacity:0;transform:scale(1.6)']])}},
+ sun:(P,k)=>({out:at(70,40,`<g class="fsu"><g stroke="#ffd76a" stroke-width="7" stroke-linecap="round"><path d="M0,-52 V-66 M0,52 V66 M52,0 H66 M-52,0 H-66 M37,37 L47,47 M-37,-37 L-47,-47 M37,-37 L47,-47 M-37,37 L-47,47"/></g><circle r="34" fill="#ffd76a"/></g>`),
+  css:`${P} .fsu{animation:${k}-fsu 10s linear infinite}\n`+kf(`${k}-fsu`,[['to','transform:rotate(360deg)']])}),
+ moon:(P,k)=>({out:at(80,40,`<path d="M0,-38 A38,38 0 1,0 32,20 A30,30 0 1,1 0,-38Z" fill="#ffe9a8"/>`)+[[150,-20],[30,110],[190,60]].map(([x,y],i)=>at(x,y,`<path class="fmo" d="${star}" fill="#fff" transform="scale(.5)" style="animation-delay:${i*.6}s"/>`)).join(''),
+  css:`${P} .fmo{animation:${k}-fmo 2s ease-in-out infinite}\n`+kf(`${k}-fmo`,[['0%,100%','opacity:.3'],['50%','opacity:1']])}),
+ rain:(P,k)=>({out:at(130,-30,`<g fill="#d9cfe0"><circle cx="-30" cy="0" r="26"/><circle cx="4" cy="-14" r="34"/><circle cx="38" cy="2" r="24"/><rect x="-56" y="0" width="118" height="26" rx="13"/></g>`+[-30,0,30].map((x,i)=>`<line class="fra" x1="${x}" y1="36" x2="${x-6}" y2="56" stroke="#8fd3ff" stroke-width="6" stroke-linecap="round" style="animation-delay:${i*.25}s"/>`).join('')),
+  css:`${P} .fra{opacity:0;animation:${k}-fra .9s linear infinite}\n`+kf(`${k}-fra`,[['0%','opacity:0;transform:translateY(0)'],['30%','opacity:1'],['100%','opacity:0;transform:translateY(60px)']])}),
+ plane:(P,k)=>({back:at(0,140,`<g class="fpl"><path d="M-34,0 L30,-5 L42,0 L30,5Z M2,0 L-10,-26 L4,-26 L16,0 L4,26 L-10,26Z M-30,0 L-38,-12 L-30,-12 L-24,0 L-30,12 L-38,12Z" fill="#8fd3ff"/></g>`),
+  css:`${P} .fpl{animation:${k}-fpl 4s linear infinite}\n`+kf(`${k}-fpl`,[['0%','transform:translate(-80px,20px);opacity:0'],['10%','opacity:1'],['90%','opacity:1'],['100%','transform:translate(700px,-40px);opacity:0']])}),
+ spinner:(P,k)=>({back:`<circle class="fspn" cx="300" cy="290" r="255" fill="none" stroke="#ffd76a" stroke-width="9" stroke-linecap="round" stroke-dasharray="220 1400"/>`,
+  css:`${P} .fspn{animation:${k}-fspn 1.2s linear infinite}\n`+kf(`${k}-fspn`,[['to','transform:rotate(360deg)']])}),
+ orbit:(P,k)=>({back:`<g class="for"><circle cx="300" cy="290" r="268" fill="none" stroke="#ffd1ea" stroke-opacity=".18" stroke-width="2"/><circle cx="568" cy="290" r="11" fill="#8fd3ff"/><circle cx="166" cy="58" r="9" fill="#ffd76a"/><circle cx="166" cy="522" r="8" fill="#ffd1ea"/></g>`,
+  css:`${P} .for{animation:${k}-for 4s linear infinite}\n`+kf(`${k}-for`,[['to','transform:rotate(360deg)']])}),
+ clock:(P,k)=>({out:at(80,40,`<circle r="36" fill="#fff" stroke="#2a2140" stroke-width="6"/><line x1="0" y1="0" x2="0" y2="-14" stroke="#2a2140" stroke-width="6" stroke-linecap="round"/><line class="fhand" x1="0" y1="0" x2="0" y2="-24" stroke="#f04f9d" stroke-width="5" stroke-linecap="round"/><circle r="5" fill="#2a2140"/>`),
+  css:`${P} .fhand{transform-box:view-box;transform-origin:0 0;animation:${k}-fhand 2s linear infinite}\n`+kf(`${k}-fhand`,[['to','transform:rotate(360deg)']])}),
+ arrow:(P,k)=>({out:[0,1].map(i=>at(600+i*30,300,`<path class="far" d="M-10,-22 L10,0 L-10,22" fill="none" stroke="#ffd76a" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" style="animation-delay:${i*.2}s"/>`)).join(''),
+  css:`${P} .far{opacity:0;animation:${k}-far 1s ease-out infinite}\n`+kf(`${k}-far`,[['0%','opacity:0;transform:translateX(-10px)'],['40%','opacity:1'],['100%','opacity:0;transform:translateX(16px)']])}),
+ arrows:(P,k)=>({out:at(-20,260,`<path class="fal" d="M10,-22 L-10,0 L10,22" fill="none" stroke="#ffd76a" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>`)+at(620,260,`<path class="fal2" d="M-10,-22 L10,0 L-10,22" fill="none" stroke="#ffd76a" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>`),
+  css:`${P} .fal{animation:${k}-fal 1s ease-in-out infinite alternate}\n${P} .fal2{animation:${k}-fal2 1s ease-in-out infinite alternate}\n`+kf(`${k}-fal`,[['from','opacity:.3;transform:translateX(8px)'],['to','opacity:1;transform:translateX(-8px)']])+kf(`${k}-fal2`,[['from','opacity:1;transform:translateX(8px)'],['to','opacity:.3;transform:translateX(-8px)']])}),
+ tapRing:(P,k)=>({out:`<circle class="ftr" cx="628" cy="398" r="22" fill="none" stroke="#ffd76a" stroke-width="6"/>`,
+  css:`${P} .ftr{opacity:0;animation:${k}-ftr 1.2s ease-out infinite}\n`+kf(`${k}-ftr`,[['0%','opacity:1;transform:scale(.4)'],['100%','opacity:0;transform:scale(2)']])}),
+ typing:(P,k)=>({out:at(450,-24,`<rect x="-74" y="-34" width="148" height="68" rx="34" fill="#fff"/><path d="M-40,28 L-58,58 L-14,30Z" fill="#fff"/>`+[-34,0,34].map((x,i)=>`<circle class="fty" cx="${x}" cy="0" r="11" fill="#c99ab4" style="animation-delay:${i*.18}s"/>`).join('')),
+  css:`${P} .fty{animation:${k}-fty 1.1s ease-in-out infinite}\n`+kf(`${k}-fty`,[['0%,60%,100%','transform:translateY(0);opacity:.5'],['30%','transform:translateY(-10px);opacity:1']])}),
+ rec:(P,k)=>({out:at(470,10,`<rect x="-70" y="-28" width="140" height="56" rx="28" fill="#2a2140"/><circle class="frec" cx="-38" cy="0" r="13" fill="#ff4d6a"/><text x="14" y="12" text-anchor="middle" font-family="${FONT}" font-weight="800" font-size="32" fill="#fff">REC</text>`),
+  css:`${P} .frec{animation:${k}-frec 1.2s ease-in-out infinite alternate}\n`+kf(`${k}-frec`,[['from','opacity:.35'],['to','opacity:1']])}),
+ glow:(P,k)=>({back:`<g class="fgl" fill="#ffd76a"><circle cx="300" cy="280" r="270" fill-opacity=".05"/><circle cx="300" cy="280" r="225" fill-opacity=".06"/><circle cx="300" cy="280" r="185" fill-opacity=".07"/></g>`,
+  css:`${P} .fgl{animation:${k}-fgl 3s ease-in-out infinite}\n`+kf(`${k}-fgl`,[['0%,100%','transform:scale(.94);opacity:.7'],['50%','transform:scale(1.04);opacity:1']])}),
+ ha:(P,k)=>({out:[[480,60,46],[548,110,36],[100,70,40]].map(([x,y,s],i)=>at(x,y,`<text class="fha" text-anchor="middle" font-family="${FONT}" font-weight="800" font-size="${s}" fill="#ffd76a" style="animation-delay:${i*.4}s">ja</text>`)).join(''),
+  css:`${P} .fha{opacity:0;animation:${k}-fha 1.2s ease-out infinite}\n`+kf(`${k}-fha`,[['0%','opacity:0;transform:scale(.5) rotate(-12deg)'],['30%','opacity:1;transform:scale(1.1) rotate(6deg)'],['100%','opacity:0;transform:translateY(-24px) scale(1)']])}),
+ pop:(P,k,d,arg)=>{const[a,b]=rng(arg,10,45);let s='';for(let i=0;i<8;i++){const r=i*Math.PI/4,c=Math.cos(r),n=Math.sin(r);s+=`<line class="fpo" x1="${(300+262*c).toFixed(0)}" y1="${(260+215*n).toFixed(0)}" x2="${(300+300*c).toFixed(0)}" y2="${(260+250*n).toFixed(0)}" stroke="#ffd76a" stroke-width="8" stroke-linecap="round"/>`;}
+  return{out:s,css:`${P} .fpo{opacity:0;animation:${k}-fpo ${d}s ease-out infinite}\n`+kf(`${k}-fpo`,[[`0%,${a}%`,'opacity:0;transform:scale(.5)'],[`${a+6}%`,'opacity:1;transform:scale(1)'],[`${b}%,100%`,'opacity:0;transform:scale(1.3)']])}},
+ progress:(P,k,d)=>({back:`<circle cx="300" cy="290" r="255" fill="none" stroke="#ffd1ea" stroke-opacity=".15" stroke-width="12"/><circle class="fpg" cx="300" cy="290" r="255" fill="none" stroke="#6ee7a8" stroke-width="12" stroke-linecap="round" stroke-dasharray="1603" transform="rotate(-90 300 290)"/>`,
+  css:`${P} .fpg{animation:${k}-fpg ${d}s ease-in-out infinite}\n`+kf(`${k}-fpg`,[['0%','stroke-dashoffset:1603'],['60%,92%','stroke-dashoffset:0;opacity:1'],['100%','stroke-dashoffset:0;opacity:0']])})
+};
+
+/* ---------- generador ---------- */
+function gen(a,k){
+  const P='.cb-'+k,d=a.d||3;let css='';const anim={},stat={};
+  const add=(s,v)=>(anim[s]=anim[s]||[]).push(v), st=(s,v)=>stat[s]=(stat[s]||'')+v;
+  const B=BODY[a.b||'bob'];
+  if(B.o)st(`${P} .rig`,`transform-origin:${B.o};`);
+  css+=kf(`${k}-b`,B.f.map(([p,y=0,r=0,sx=1,sy=1,x=0])=>[p,`transform:${T(y,r,sx,sy,x)}`]));
+  add(`${P} .rig`,`${k}-b ${d}s ${B.e||'ease-in-out'} infinite`);
+  css+=kf(`${k}-sh`,B.f.map(([p,y=0,r=0,sx=1])=>{let s=y>100?0:(1-Math.min(.5,Math.max(0,-y)/140))*Math.min(1,sx);return[p,`transform:scale(${s.toFixed(2)});opacity:${(.3+.7*s).toFixed(2)}`]}));
+  add(`${P} .shadow`,`${k}-sh ${d}s ${B.e||'ease-in-out'} infinite`);
+  for(const side of ['l','r']){
+    let spec=a[side]||'relax',mult=1,phase=false;
+    if(spec.includes('@')){[spec,mult]=spec.split('@');mult=+mult;}
+    if(spec.endsWith('~')){phase=true;spec=spec.slice(0,-1);}
+    const fr=ARM[spec],sg=side==='l'?1:-1,dur=+(d*mult).toFixed(2),dl=phase?` ${-dur/2}s`:'';
+    css+=kf(`${k}-${side}`,fr.map(([p,v])=>[p,`transform:rotate(${sg*v}deg)`]));
+    add(`${P} .arm-${side}`,`${k}-${side} ${dur}s ease-in-out${dl} infinite`);
+    if(side==='r'&&a.pr){css+=kf(`${k}-pc`,fr.map(([p,v])=>[p,`transform:rotate(${v}deg)`]));add(`${P} .prop-c`,`${k}-pc ${dur}s ease-in-out${dl} infinite`);}
+  }
+  const base=new Set([...EV[a.e||'open'],...MV[a.m||'open']]);
+  const sw=a.sw?new Set([...EV[a.sw.e||a.e||'open'],...MV[a.sw.m||a.m||'open']]):null;
+  ALLV.forEach((c,i)=>{
+    const def=c==='eyes-open'||c==='mouth-open',inB=base.has(c);
+    if(!sw){if(inB!==def)st(`${P} .${c}`,`opacity:${inB?1:0};`);return;}
+    const inS=sw.has(c),[s0,s1]=[a.sw.a,a.sw.b];
+    if(inB&&inS){if(!def)st(`${P} .${c}`,'opacity:1;');}
+    else if(!inB&&!inS){if(def)st(`${P} .${c}`,'opacity:0;');}
+    else{const on=inB?1:0;css+=kf(`${k}-v${i}`,[[`0%,${s0-4}%,${s1+4}%,100%`,`opacity:${on}`],[`${s0}%,${s1}%`,`opacity:${1-on}`]]);add(`${P} .${c}`,`${k}-v${i} ${d}s infinite`);}
+  });
+  if(a.e==='big')st(`${P} .eyes-open`,'transform:scale(1.15);');
+  if([...base,...(sw||[])].includes('eyes-dizzy'))css+=`${P} .eyes-dizzy .sp{transform-box:fill-box;transform-origin:center;animation:${k}-sp 1.2s linear infinite}\n`+kf(`${k}-sp`,[['to','transform:rotate(360deg)']]);
+  add(`${P} .blink`,`cb-blink ${Math.max(3,d)}s infinite`);
+  if(a.m==='talk')add(`${P} .mouth-open`,`cb-talk ${a.slow?2.6:1.6}s linear infinite`);
+  if(a.pu){const p=PUP[a.pu];css+=kf(`${k}-pu`,p.f.map(([q,v])=>[q,`transform:translate(${v})`]));add(`${P} .pupils`,`${k}-pu ${p.d||d}s ${p.e||'ease-in-out'} infinite`);}
+  if(a.br==='up')st(`${P} .brows`,'transform:translateY(-14px);');
+  if(a.br==='raise'){css+=kf(`${k}-br`,[['0%,100%','transform:translateY(0)'],['30%,70%','transform:translateY(-14px)']]);add(`${P} .brows`,`${k}-br ${d}s ease-in-out infinite`);}
+  if(a.br==='sad'||a.br==='det'){st(`${P} .brows`,'opacity:0;');st(`${P} .brows-${a.br}`,'opacity:1;');}
+  if(a.ch==='blush'){css+=kf(`${k}-ch`,[['0%,100%','opacity:.8;transform:scale(1)'],['50%','opacity:1;transform:scale(1.12)']]);add(`${P} .cheeks`,`${k}-ch 1.6s ease-in-out infinite`);}
+  const fx={in:'',out:'',back:''};
+  (a.fx||[]).forEach(spec=>{const i=spec.indexOf(':'),n=i<0?spec:spec.slice(0,i),arg=i<0?undefined:spec.slice(i+1);
+    const r=FX[n](P,k,d,arg);fx.in+=r.in||'';fx.out+=r.out||'';fx.back+=r.back||'';css+=r.css||'';});
+  let rules='';
+  const sels=new Set([...Object.keys(stat),...Object.keys(anim)]);
+  sels.forEach(s=>rules+=`${s}{${stat[s]||''}${anim[s]?`animation:${anim[s].join(',')};`:''}}\n`);
+  return{css:rules+css,fx,prop:a.pr?PROPS[a.pr]:''};
+}
+
+/* ---------- las 10 originales (CSS a mano) ---------- */
+const O={
+saludo:{t:'Saludo',u:'Pantalla de entrada, bienvenida al abrir la app.',d:3,
+ css:p=>`${p} .rig{animation:cb-saludo-b 3s ease-in-out infinite}
+@keyframes cb-saludo-b{0%,100%{transform:translateY(0) rotate(0)}20%,70%{transform:translateY(-12px) rotate(-3deg)}45%{transform:translateY(-5px) rotate(-2deg)}}
+${p} .arm-r{animation:cb-saludo-w 3s ease-in-out infinite}
+@keyframes cb-saludo-w{0%,100%{transform:rotate(0)}15%{transform:rotate(-125deg)}25%{transform:rotate(-100deg)}35%{transform:rotate(-135deg)}45%{transform:rotate(-100deg)}55%{transform:rotate(-135deg)}68%{transform:rotate(-115deg)}85%{transform:rotate(0)}}
+${p} .eyes-open{animation:cb-blink 3s infinite}
+${p} .shadow{animation:cb-saludo-s 3s ease-in-out infinite}
+@keyframes cb-saludo-s{0%,100%{transform:scale(1);opacity:1}20%,70%{transform:scale(.85);opacity:.7}}`},
+reposo:{t:'Reposo',u:'Inicio o perfil. Mira a su alrededor y parpadea.',d:5,
+ css:p=>`${p} .rig{animation:cb-reposo-b 5s ease-in-out infinite}
+@keyframes cb-reposo-b{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-16px) rotate(2deg)}}
+${p} .pupils{animation:cb-reposo-p 6s ease-in-out infinite}
+@keyframes cb-reposo-p{0%,20%,85%,100%{transform:translate(0,0)}30%,45%{transform:translate(-9px,3px)}55%,72%{transform:translate(9px,-4px)}}
+${p} .arm-l{animation:cb-reposo-al 2.5s ease-in-out infinite alternate}
+${p} .arm-r{animation:cb-reposo-ar 2.5s ease-in-out infinite alternate}
+@keyframes cb-reposo-al{from{transform:rotate(-4deg)}to{transform:rotate(6deg)}}
+@keyframes cb-reposo-ar{from{transform:rotate(4deg)}to{transform:rotate(-6deg)}}
+${p} .eyes-open{animation:cb-blink 4s infinite}
+${p} .shadow{animation:cb-reposo-s 5s ease-in-out infinite}
+@keyframes cb-reposo-s{0%,100%{transform:scale(1)}50%{transform:scale(.82);opacity:.6}}`},
+correcto:{t:'¡Correcto!',u:'Respuesta buena en quiz, flashcard o pronunciación.',d:2.2,
+ out:[[70,140,0],[540,110,.12],[470,10,.24],[120,30,.18]].map(([x,y,dl])=>at(x,y,`<path class="st" d="${star}" fill="#ffd76a" style="animation-delay:${dl}s"/>`)).join(''),
+ css:p=>`${p} .rig{animation:cb-ok-b 2.2s cubic-bezier(.3,.7,.4,1) infinite}
+@keyframes cb-ok-b{0%,100%{transform:translateY(0) scale(1,1)}15%{transform:translateY(0) scale(1.07,.9)}35%{transform:translateY(-64px) scale(.96,1.06)}55%{transform:translateY(-64px) scale(1,1)}70%{transform:translateY(0) scale(1.07,.92)}80%{transform:translateY(0) scale(.98,1.02)}}
+${p} .eyes-open{animation:cb-ok-e 2.2s infinite}
+${p} .eyes-happy{animation:cb-ok-h 2.2s infinite}
+@keyframes cb-ok-e{0%,16%,78%,100%{opacity:1}20%,74%{opacity:0}}
+@keyframes cb-ok-h{0%,16%,78%,100%{opacity:0}20%,74%{opacity:1}}
+${p} .arm-l{animation:cb-ok-al 2.2s ease-in-out infinite}
+${p} .arm-r{animation:cb-ok-ar 2.2s ease-in-out infinite}
+@keyframes cb-ok-al{0%,15%,85%,100%{transform:rotate(0)}30%,70%{transform:rotate(130deg)}}
+@keyframes cb-ok-ar{0%,15%,85%,100%{transform:rotate(0)}30%,70%{transform:rotate(-130deg)}}
+${p} .st{opacity:0;animation:cb-ok-st 2.2s ease-out infinite}
+@keyframes cb-ok-st{0%,28%{opacity:0;transform:scale(0) rotate(0)}40%{opacity:1;transform:scale(1.3) rotate(45deg)}62%{opacity:1;transform:scale(1) rotate(90deg)}75%,100%{opacity:0;transform:scale(0) rotate(120deg)}}
+${p} .shadow{animation:cb-ok-s 2.2s cubic-bezier(.3,.7,.4,1) infinite}
+@keyframes cb-ok-s{0%,15%,70%,100%{transform:scale(1);opacity:1}35%,55%{transform:scale(.6);opacity:.4}}`},
+casi:{t:'Casi… ¡tú puedes!',u:'Respuesta incorrecta: se preocupa y luego da ánimo.',d:3.2,
+ in:at(478,150,`<path class="drop" d="M0,-18 C8,-6 12,2 12,8 A12,12 0 0 1 -12,8 C-12,2 -8,-6 0,-18Z" fill="#8fd3ff"/>`),
+ css:p=>`${p} .rig{animation:cb-casi-b 3.2s ease-in-out infinite}
+@keyframes cb-casi-b{0%,40%,100%{transform:rotate(0)}8%{transform:rotate(-5deg)}16%{transform:rotate(5deg)}24%{transform:rotate(-3deg)}32%{transform:rotate(2deg)}78%,90%{transform:rotate(-3deg) translateY(-8px)}}
+${p} .mouth-open{animation:cb-casi-mo 3.2s infinite}
+${p} .mouth-small{animation:cb-casi-ms 3.2s infinite}
+@keyframes cb-casi-mo{0%,4%,68%,100%{opacity:1}8%,64%{opacity:0}}
+@keyframes cb-casi-ms{0%,4%,68%,100%{opacity:0}8%,64%{opacity:1}}
+${p} .pupils{animation:cb-casi-p 3.2s ease-in-out infinite}
+@keyframes cb-casi-p{0%,4%,68%,100%{transform:translate(0,0)}10%,62%{transform:translate(-7px,11px)}}
+${p} .eyes-open{animation:cb-casi-e 3.2s infinite}
+${p} .eyes-happy{animation:cb-casi-h 3.2s infinite}
+@keyframes cb-casi-e{0%,72%,96%,100%{opacity:1}75%,93%{opacity:0}}
+@keyframes cb-casi-h{0%,72%,96%,100%{opacity:0}75%,93%{opacity:1}}
+${p} .arm-r{animation:cb-casi-ar 3.2s ease-in-out infinite}
+@keyframes cb-casi-ar{0%,68%,100%{transform:rotate(0)}76%,90%{transform:rotate(-62deg)}83%{transform:rotate(-52deg)}}
+${p} .drop{opacity:0;animation:cb-casi-d 3.2s ease-in infinite}
+@keyframes cb-casi-d{0%,8%{opacity:0;transform:translateY(-6px) scale(.5)}16%{opacity:1;transform:translateY(0) scale(1)}55%{opacity:1;transform:translateY(34px) scale(1)}64%,100%{opacity:0;transform:translateY(44px) scale(.8)}}`},
+pensando:{t:'Pensando',u:'Esperando a la IA o preparando la siguiente pregunta.',d:1.5,
+ out:[[468,72,9,0],[506,40,12,.25],[550,4,16,.5]].map(([x,y,r,dl])=>at(x,y,`<circle class="dot" r="${r}" fill="#ffd1ea" style="animation-delay:${dl}s"/>`)).join(''),
+ css:p=>`${p} .rig{animation:cb-pen-b 3s ease-in-out infinite}
+@keyframes cb-pen-b{0%,100%{transform:rotate(-4deg) translateY(0)}50%{transform:rotate(-6deg) translateY(-8px)}}
+${p} .arm-l{animation:cb-pen-a 1.5s ease-in-out infinite}
+@keyframes cb-pen-a{0%,100%{transform:rotate(-95deg)}50%{transform:rotate(-102deg)}}
+${p} .pupils{transform:translate(11px,-13px)}
+${p} .mouth-open{opacity:0}
+${p} .mouth-small{opacity:1}
+${p} .eyes-open{animation:cb-blink 3.5s infinite}
+${p} .dot{animation:cb-pen-d 1.5s ease-in-out infinite}
+@keyframes cb-pen-d{0%,100%{opacity:.25;transform:scale(.7)}40%{opacity:1;transform:scale(1.1)}}`},
+hablando:{t:'Hablando',u:'Cuando lee una frase en voz alta o da una instrucción.',d:2,
+ out:[[588,330,'M0,-18 Q12,0 0,18',0],[606,330,'M0,-32 Q20,0 0,32',.2],[626,330,'M0,-46 Q26,0 0,46',.4]].map(([x,y,p,dl])=>at(x,y,`<path class="w" d="${p}" style="animation-delay:${dl}s"/>`)).join(''),
+ css:p=>`${p} .rig{animation:cb-hab-b 1s ease-in-out infinite alternate}
+@keyframes cb-hab-b{from{transform:translateY(0)}to{transform:translateY(-7px)}}
+${p} .mouth-open{animation:cb-talk 1.6s linear infinite}
+${p} .arm-r{animation:cb-hab-a 1s ease-in-out infinite alternate}
+@keyframes cb-hab-a{from{transform:rotate(-18deg)}to{transform:rotate(-38deg)}}
+${p} .eyes-open{animation:cb-blink 3s infinite}
+${p} .w{fill:none;stroke:#ffd1ea;stroke-width:7;stroke-linecap:round;opacity:0;animation:cb-hab-w 1.2s ease-out infinite}
+@keyframes cb-hab-w{0%{opacity:0;transform:translateX(-6px)}30%{opacity:1}100%{opacity:0;transform:translateX(10px)}}`},
+escuchando:{t:'Escuchando',u:'Práctica de pronunciación mientras el micrófono graba.',d:1.6,
+ out:[[596,268,'M0,-16 Q-10,0 0,16',.4],[618,268,'M0,-28 Q-18,0 0,28',.2],[640,268,'M0,-40 Q-26,0 0,40',0]].map(([x,y,p,dl])=>at(x,y,`<path class="w" d="${p}" style="animation-delay:${dl}s"/>`)).join(''),
+ css:p=>`${p} .rig{animation:cb-esc-b 3s ease-in-out infinite}
+@keyframes cb-esc-b{0%,100%{transform:rotate(5deg)}50%{transform:rotate(7deg) translateY(-5px)}}
+${p} .arm-r{animation:cb-esc-a 1.6s ease-in-out infinite}
+@keyframes cb-esc-a{0%,100%{transform:rotate(-150deg)}50%{transform:rotate(-144deg)}}
+${p} .pupils{transform:translate(12px,0)}
+${p} .mouth-open{opacity:0}
+${p} .mouth-smile{opacity:1}
+${p} .eyes-open{animation:cb-blink 3.2s infinite}
+${p} .w{fill:none;stroke:#8fd3ff;stroke-width:7;stroke-linecap:round;opacity:0;animation:cb-esc-w 1.6s ease-in infinite}
+@keyframes cb-esc-w{0%{opacity:0;transform:translateX(14px)}40%{opacity:1}100%{opacity:0;transform:translateX(-10px)}}`},
+nivel:{t:'¡Subiste de nivel!',u:'Al completar un nivel o un tema de vocabulario.',d:3.4,
+ back:`<circle class="ring" cx="300" cy="280" r="230" fill="none" stroke="#ffd76a" stroke-width="6"/>`,
+ out:(()=>{const cols=['#ffd76a','#ffd1ea','#8fd3ff','#ffffff','#f04f9d'];let s='';for(let i=0;i<16;i++){s+=at(40+i*34+(i%3)*6,-20-(i%4)*22,`<rect class="cf" x="-6" y="-3" width="12" height="7" rx="2" fill="${cols[i%5]}" style="animation-delay:${((i%5)*.07+.9).toFixed(2)}s"/>`);}
+  return s+at(300,-40,`<text class="lvl" text-anchor="middle" font-family="${FONT}" font-size="54" font-weight="800" fill="#ffd76a">+1 NIVEL</text>`);})(),
+ css:p=>`${p} .rig{transform-origin:300px 280px;animation:cb-niv-b 3.4s cubic-bezier(.3,.7,.4,1) infinite}
+@keyframes cb-niv-b{0%{transform:translateY(0) rotate(0) scale(1,1)}10%{transform:translateY(10px) rotate(0) scale(1.06,.9)}35%{transform:translateY(-70px) rotate(360deg) scale(1,1)}50%{transform:translateY(-70px) rotate(360deg) scale(1,1)}64%{transform:translateY(0) rotate(360deg) scale(1.06,.92)}74%,100%{transform:translateY(0) rotate(360deg) scale(1,1)}}
+${p} .eyes-open{animation:cb-niv-e 3.4s infinite}
+${p} .eyes-happy{animation:cb-niv-h 3.4s infinite}
+@keyframes cb-niv-e{0%,12%,88%,100%{opacity:1}16%,84%{opacity:0}}
+@keyframes cb-niv-h{0%,12%,88%,100%{opacity:0}16%,84%{opacity:1}}
+${p} .arm-l{animation:cb-niv-al 3.4s ease-in-out infinite}
+${p} .arm-r{animation:cb-niv-ar 3.4s ease-in-out infinite}
+@keyframes cb-niv-al{0%,38%,92%,100%{transform:rotate(0)}48%,84%{transform:rotate(135deg)}66%{transform:rotate(120deg)}}
+@keyframes cb-niv-ar{0%,38%,92%,100%{transform:rotate(0)}48%,84%{transform:rotate(-135deg)}66%{transform:rotate(-120deg)}}
+${p} .ring{opacity:0;animation:cb-niv-r 3.4s ease-out infinite}
+@keyframes cb-niv-r{0%,60%{opacity:0;transform:scale(.3)}64%{opacity:1}85%,100%{opacity:0;transform:scale(1.25)}}
+${p} .cf{opacity:0;animation:cb-niv-c 3.4s ease-in infinite}
+@keyframes cb-niv-c{0%,62%{opacity:0;transform:translateY(0) rotate(0)}66%{opacity:1}100%{opacity:0;transform:translateY(300px) rotate(540deg)}}
+${p} .lvl{opacity:0;animation:cb-niv-t 3.4s ease-out infinite}
+@keyframes cb-niv-t{0%,60%{opacity:0;transform:translateY(20px) scale(.8)}68%{opacity:1;transform:translateY(0) scale(1.08)}74%,88%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-12px) scale(1)}}
+${p} .shadow{animation:cb-niv-s 3.4s cubic-bezier(.3,.7,.4,1) infinite}
+@keyframes cb-niv-s{0%,64%,100%{transform:scale(1);opacity:1}35%,50%{transform:scale(.55);opacity:.4}}`},
+sorpresa:{t:'¡Sorpresa!',u:'Nueva misión, logro desbloqueado o aviso importante.',d:2.6,
+ out:at(480,6,`<g class="bang"><circle r="36" fill="#ffd76a"/><text y="16" text-anchor="middle" font-family="${FONT}" font-size="48" font-weight="800" fill="#3a0b26">!</text></g>`),
+ css:p=>`${p} .rig{animation:cb-sor-b 2.6s ease-out infinite}
+@keyframes cb-sor-b{0%,42%,100%{transform:translateY(0) scale(1,1)}10%{transform:translateY(6px) scale(1.05,.93)}22%{transform:translateY(-32px) scale(.95,1.08)}34%{transform:translateY(0) scale(1.03,.97)}}
+${p} .eyes-open{animation:cb-sor-e 2.6s ease-out infinite}
+@keyframes cb-sor-e{0%,10%,82%,100%{transform:scale(1)}20%,74%{transform:scale(1.18)}}
+${p} .mouth-open{animation:cb-sor-mo 2.6s infinite}
+${p} .mouth-o{animation:cb-sor-mi 2.6s infinite}
+@keyframes cb-sor-mo{0%,10%,82%,100%{opacity:1}14%,78%{opacity:0}}
+@keyframes cb-sor-mi{0%,10%,82%,100%{opacity:0}14%,78%{opacity:1}}
+${p} .arm-l{animation:cb-sor-al 2.6s ease-out infinite}
+${p} .arm-r{animation:cb-sor-ar 2.6s ease-out infinite}
+@keyframes cb-sor-al{0%,10%,84%,100%{transform:rotate(0)}20%,76%{transform:rotate(60deg)}}
+@keyframes cb-sor-ar{0%,10%,84%,100%{transform:rotate(0)}20%,76%{transform:rotate(-60deg)}}
+${p} .bang{opacity:0;animation:cb-sor-x 2.6s cubic-bezier(.3,1.4,.5,1) infinite}
+@keyframes cb-sor-x{0%,12%{opacity:0;transform:scale(0)}24%{opacity:1;transform:scale(1.15)}30%,74%{opacity:1;transform:scale(1)}84%,100%{opacity:0;transform:scale(.6)}}`},
+durmiendo:{t:'Durmiendo',u:'Racha en pausa o días sin practicar.',d:5,
+ out:[[480,130,34,'z',0],[516,86,46,'z',.8],[560,36,60,'Z',1.6]].map(([x,y,s,t,dl])=>at(x,y,`<text class="z" font-family="${FONT}" font-weight="800" font-size="${s}" fill="#ffd1ea" style="animation-delay:${dl}s">${t}</text>`)).join(''),
+ css:p=>`${p} .rig{animation:cb-dor-b 5s ease-in-out infinite}
+@keyframes cb-dor-b{0%,100%{transform:rotate(3deg) scale(1,1)}50%{transform:rotate(3deg) translateY(4px) scale(1.03,.96)}}
+${p} .eyes-open,${p} .mouth-open{opacity:0}
+${p} .eyes-closed,${p} .mouth-smile{opacity:1}
+${p} .arm-l{transform:rotate(10deg)}
+${p} .arm-r{transform:rotate(-10deg)}
+${p} .z{opacity:0;animation:cb-dor-z 2.4s ease-out infinite}
+@keyframes cb-dor-z{0%{opacity:0;transform:translate(0,10px) scale(.6)}30%{opacity:1}100%{opacity:0;transform:translate(14px,-30px) scale(1)}}`}
+};
+
+/* ---------- catálogo: 10 categorías x 10 ---------- */
+const CATS=[
+['sal','Saludos',[
+ 'saludo',
+ {t:'Hello!',u:'Primer saludo del día en inglés.',b:'bob',r:'wave',fx:['bubble:Hello!']},
+ {t:'Hola con las dos manos',u:'Cuando el usuario vuelve tras varios días.',d:2,b:'bob',l:'waveFast',r:'waveFast~',e:'happy',m:'grin'},
+ {t:'Good morning',u:'Sesión de la mañana: se despierta y estira.',d:4,b:'stretch',l:'stretchUp',r:'stretchUp',sw:{e:'closed',m:'yawn',a:22,b:60},fx:['sun','bubble:Good morning!']},
+ {t:'Good night',u:'Última práctica del día.',d:4,b:'droop',e:'lids',m:'smile',r:'relax',sw:{e:'closed',a:40,b:90},fx:['moon','bubble:Good night!']},
+ {t:'Bye bye',u:'Al cerrar una sesión.',b:'sway',r:'wave',e:'happy',m:'smile',fx:['bubble:Bye!']},
+ {t:'See you!',u:'Despedida con guiño al terminar una lección.',b:'bob',e:'wink',m:'grin',r:'point',fx:['sparkle','bubble:See you!']},
+ {t:'Bienvenido de vuelta',u:'Al iniciar sesión otra vez.',d:3.4,b:'popin',l:'out',r:'out',e:'happy',m:'grin',fx:['hearts','bubble:Welcome back!']},
+ {t:'Abrazo',u:'Mensaje de cariño tras una racha larga.',b:'breathe',l:'hug',r:'hug',e:'closed',m:'smile',ch:'blush',fx:['hearts']},
+ {t:'¡Choca esos cinco!',u:'Al terminar el onboarding.',b:'bounce',r:'reach',sw:{e:'happy',m:'grin',a:28,b:75},fx:['stars:30-62','bubble:High five!']}
+]],
+['ok','Aciertos',[
+ 'correcto',
+ {t:'Good job!',u:'Respuesta correcta en ejercicios largos.',b:'nod',r:'thumb',e:'happy',m:'grin',fx:['sparkle','bubble:Good job!']},
+ {t:'Perfecto',u:'Lección sin errores.',b:'bigjump',l:'up',r:'up',e:'star',m:'grin',fx:['stars:30-75','dust:68']},
+ {t:'Respuesta correcta',u:'Confirmación rápida bajo la pregunta.',b:'nod',sw:{e:'happy',a:25,b:85},fx:['check']},
+ {t:'Aplausos',u:'Al terminar una historia corta.',d:2,b:'bob',l:'clap@0.25',r:'clap@0.25',e:'happy',m:'grin',fx:['sparkle']},
+ {t:'Combo x3',u:'Tres respuestas buenas seguidas.',b:'hop2',l:'cheer',r:'cheer~',sw:{e:'happy',m:'grin',a:10,b:80},fx:['badge:COMBO x3','sparkle']},
+ {t:'+10 XP',u:'Cuando suma experiencia.',b:'bounce',r:'thumb',e:'happy',m:'smile',fx:['badge:+10 XP']},
+ {t:'Wow!',u:'Respuesta difícil acertada.',b:'jiggle',e:'big',m:'o',l:'out',r:'out',fx:['pop:8-40','bubble:Wow!']},
+ {t:'Respuesta rápida',u:'Acertó en pocos segundos.',d:2,b:'lean',l:'run~@0.3',r:'run@0.3',br:'det',m:'grin',fx:['speed','badge:¡Rápido!']},
+ {t:'Excellent!',u:'Fin de un quiz con buena nota.',d:3.4,b:'spin',l:'cheer',r:'cheer~',e:'happy',m:'grin',fx:['confetti','bubble:Excellent!']}
+]],
+['err','Errores y ánimo',[
+ 'casi',
+ {t:'Oops!',u:'Error de tipeo o despiste.',b:'tilt',l:'facepalm',m:'wavy',pu:'down',fx:['bubble:Oops!']},
+ {t:'Try again!',u:'Botón de reintentar.',b:'bob',r:'pump',br:'det',m:'grin',fx:['bubble:Try again!']},
+ {t:'Pista',u:'Cuando el usuario pide ayuda.',d:3.4,b:'bob',l:'chin',pu:'up',sw:{e:'happy',m:'grin',a:35,b:90},fx:['bulb:28-90']},
+ {t:'Confundido',u:'Respuesta en blanco o “no sé”.',b:'tilt',l:'scratch',m:'small',pu:'roll',br:'raise',fx:['question']},
+ {t:'Mareado',u:'Muchos errores seguidos: sugiere una pausa.',d:2.4,b:'wobble',e:'dizzy',m:'wavy',fx:['orbit']},
+ {t:'Un poco triste',u:'Se perdió la racha.',d:3.4,b:'sink',br:'sad',pu:'down',m:'small',fx:['tears']},
+ {t:'Tómate un respiro',u:'Pausa después de varios errores.',d:4,b:'breathe',e:'closed',m:'smile',l:'out',r:'out',fx:['glow']},
+ {t:'Sin energía',u:'Se acabaron los intentos del día.',d:3.4,b:'droop',e:'lids',m:'flat',fx:['drop']},
+ {t:'¡Vamos otra vez!',u:'Al reintentar una lección fallida.',b:'bounce',l:'pump',r:'pump~',br:'det',m:'grin',fx:["bubble:Let's go!"]}
+]],
+['pen','Pensar y cargar',[
+ 'pensando',
+ {t:'Idea',u:'Cuando la IA encuentra una respuesta.',d:3.4,b:'bob',r:'up',pu:'up',sw:{e:'happy',m:'grin',a:30,b:90},fx:['bulb:25-90','sparkle']},
+ {t:'Buscando',u:'Buscando palabras en el diccionario.',b:'sway',r:'hold',pr:'magnifier',pu:'read',m:'small'},
+ {t:'Leyendo',u:'Lector de historias cortas.',d:4,b:'breathe',l:'hold',r:'hold',pr:'book',pu:'read',m:'smile'},
+ {t:'Escribiendo',u:'Ejercicios de escritura.',d:2,b:'bob',r:'scribble@0.3',pr:'pencil',pu:'down',m:'tongue'},
+ {t:'Cargando',u:'Spinner mientras carga una pantalla.',b:'float',pu:'look',m:'smile',fx:['spinner']},
+ {t:'La IA está pensando',u:'Mientras la IA genera una respuesta.',d:4,b:'float',l:'chin',pu:'up',m:'small',fx:['orbit','sparkle']},
+ {t:'Calculando',u:'Calculando puntaje o resultados.',d:2,b:'bob',pu:'roll',m:'flat',fx:['dots','badge:2 + 2 = ?']},
+ {t:'Esperando',u:'Tiempo de espera largo.',d:4,b:'sway',l:'hips',r:'hips',e:'lids',m:'flat',pu:'right',fx:['clock']},
+ {t:'Concentrado',u:'Ejercicios con temporizador.',b:'lean',br:'det',m:'flat',pu:'down',fx:['drop']}
+]],
+['voz','Voz',[
+ 'hablando','escuchando',
+ {t:'Repite conmigo',u:'Antes de que el usuario grabe una frase.',d:2,b:'bob',r:'hold',pr:'mic',m:'talk',fx:['wavesOut']},
+ {t:'Cantando',u:'Canciones o rimas para practicar.',d:3,b:'sway',e:'closed',m:'talk',slow:1,fx:['notes']},
+ {t:'Grabando',u:'Micrófono activo.',d:2,b:'bob',r:'hold',pr:'mic',m:'smile',pu:'right',fx:['rec']},
+ {t:'Pronunciación perfecta',u:'Puntaje alto en pronunciación.',d:2.4,b:'bounce',e:'star',m:'grin',fx:['wavesOut:#ffd76a','stars']},
+ {t:'Más fuerte, por favor',u:'No se escuchó bien la grabación.',b:'tiltR',r:'ear',pu:'right',m:'small',fx:['question','wavesIn']},
+ {t:'Pregunta',u:'Diálogos de práctica.',b:'tilt',r:'out',m:'talk',fx:['bubble:How are you?']},
+ {t:'Dictado',u:'Escucha y escribe lo que oyes.',d:2,b:'bob',l:'ear',r:'scribble@0.3',pr:'pencil',pu:'down',m:'tongue'},
+ {t:'Audio lento',u:'Reproducir la frase más despacio.',d:5,b:'float',m:'talk',slow:1,fx:['bubble:Slowly...','wavesOut']}
+]],
+['pro','Progreso y logros',[
+ 'nivel',
+ {t:'Trofeo',u:'Ganó una competencia o desafío.',b:'bounce',l:'cheer',r:'up',pr:'trophy',e:'happy',m:'grin',fx:['confetti']},
+ {t:'Corona de campeón',u:'Primer lugar o meta mensual.',d:3.6,b:'proud',e:'closed',m:'smile',fx:['crown','sparkle']},
+ {t:'Racha de 7 días',u:'Una semana practicando seguido.',b:'hop2',l:'cheer',r:'cheer~',e:'happy',m:'grin',fx:['fire','badge:7 días']},
+ {t:'Misión cumplida',u:'Al completar una misión.',b:'proud',r:'up',pr:'flag',l:'hips',e:'happy',m:'grin',fx:['sparkle','badge:¡Misión cumplida!']},
+ {t:'Meta del día',u:'Anillo de progreso diario completo.',d:4,b:'bob',r:'thumb',sw:{e:'happy',m:'grin',a:62,b:94},fx:['progress']},
+ {t:'Tema desbloqueado',u:'Se abre un tema nuevo de vocabulario.',d:3.4,b:'popin',e:'big',m:'o',l:'out',r:'out',fx:['sparkle','bubble:New!']},
+ {t:'Omni Voy Pro',u:'Pantalla de bienvenida a Pro.',d:5,b:'floatHigh',e:'star',m:'grin',l:'out',r:'out',fx:['glow','badge:PRO']},
+ {t:'¡Récord!',u:'Nuevo récord personal de XP.',d:3,b:'rocket',l:'up',r:'up',e:'happy',m:'grin',fx:['badge:¡Récord!']},
+ {t:'Tres estrellas',u:'Nivel completado con nota máxima.',d:2.6,b:'bigjump',e:'star',m:'grin',l:'cheer',r:'cheer~',fx:['stars','badge:★★★']}
+]],
+['emo','Emociones',[
+ 'sorpresa',
+ {t:'Feliz',u:'Estado de ánimo positivo general.',d:2.4,b:'bounce',e:'happy',m:'grin',fx:['sparkle']},
+ {t:'Enamorado del inglés',u:'Al marcar una palabra como favorita.',d:2,b:'heartbeat',e:'heart',m:'smile',ch:'blush',fx:['hearts']},
+ {t:'Riendo',u:'Historias o chistes en inglés.',d:2,b:'laugh',e:'happy',m:'grin',fx:['ha']},
+ {t:'Tímido',u:'Primera grabación de voz del usuario.',d:3.4,b:'shy',pu:'down',m:'smile',ch:'blush',l:'hug'},
+ {t:'Orgulloso',u:'Resumen semanal de progreso.',b:'proud',e:'closed',m:'smile',l:'hips',r:'hips',fx:['sparkle']},
+ {t:'Emocionado',u:'Antes de empezar un desafío.',d:2,b:'hop2',e:'star',m:'grin',l:'flap@0.3',r:'flap@0.3',fx:['stars']},
+ {t:'Nervioso',u:'Antes de un examen o prueba de nivel.',d:2,b:'shiver',m:'wavy',pu:'look',br:'sad',fx:['drop']},
+ {t:'Guiño',u:'Tip o consejo rápido.',b:'tilt',e:'wink',m:'smile',r:'thumb',fx:['sparkle']},
+ {t:'Travieso',u:'Pregunta con trampa o bonus.',d:2,b:'jiggle',e:'wink',m:'tongue'}
+]],
+['sit','Situaciones reales',[
+ {t:'En el aeropuerto',u:'Tema de viajes y aeropuerto.',d:4,b:'bob',r:'hold',pr:'ticket',pu:'right',fx:['plane','bubble:Where is gate 5?']},
+ {t:'En el café',u:'Pedir algo en una cafetería.',d:3.4,b:'breathe',r:'hold',pr:'coffee',e:'happy',m:'smile',fx:['bubble:A coffee, please!']},
+ {t:'De compras',u:'Tema de tiendas y precios.',d:2,b:'walk',r:'hold',pr:'bag',m:'smile',fx:['bubble:How much is it?']},
+ {t:'Check-in en el hotel',u:'Tema de hoteles y reservas.',d:3.4,b:'bob',r:'out',m:'talk',fx:['bubble:I have a reservation']},
+ {t:'Llamada telefónica',u:'Conversaciones por teléfono.',d:3,b:'tiltR',r:'ear',pr:'phone',m:'talk',pu:'right',fx:['bubble:Can you hear me?']},
+ {t:'Pedir direcciones',u:'Moverse por la ciudad.',b:'bob',r:'point',pu:'right',br:'raise',m:'talk',fx:['bubble:Where is the station?']},
+ {t:'Entrevista de trabajo',u:'Inglés para el trabajo.',d:3.4,b:'breathe',br:'det',m:'smile',r:'out',fx:['bubble:Nice to meet you']},
+ {t:'Presentarse',u:'Hablar de uno mismo.',b:'bob',l:'hold',m:'talk',e:'happy',fx:['bubble:My name is...']},
+ {t:'Hablar del clima',u:'Conversación casual sobre el tiempo.',b:'tilt',pu:'up',m:'o',fx:['rain',"bubble:It's raining!"]},
+ {t:'En el restaurante',u:'Pedir la cuenta o hacer un pedido.',b:'bob',r:'reach',m:'talk',fx:['bubble:The check, please!']}
+]],
+['app','Avisos y navegación',[
+ {t:'Aparecer',u:'Entrada del personaje en cualquier pantalla.',d:3.4,b:'popin',e:'happy',m:'grin',l:'out',r:'out',fx:['pop:12-40']},
+ {t:'Despedirse y salir',u:'Al cerrar un modal o tutorial.',d:3.4,b:'popout',r:'wave',e:'happy',m:'smile'},
+ {t:'Asomarse',u:'Tooltip o tutorial desde abajo.',d:4,b:'peek',pu:'look',m:'smile'},
+ {t:'Toca aquí',u:'Señalar un botón en el tutorial.',d:2,b:'bob',r:'point',pu:'right',m:'grin',fx:['tapRing']},
+ {t:'Desliza',u:'Enseñar a deslizar las flashcards.',d:2,b:'sway',r:'swipe@0.5',pu:'right',m:'smile',fx:['arrows']},
+ {t:'Notificación',u:'Aviso nuevo dentro de la app.',d:2.4,b:'jiggle',e:'big',m:'o',fx:['bang']},
+ {t:'Recordatorio diario',u:'Notificación para practicar.',d:3,b:'bounce',r:'point',m:'grin',fx:['clock','bubble:Time to practice!']},
+ {t:'Guardado',u:'Palabra o progreso guardado.',d:2.4,b:'nod',r:'thumb',e:'happy',m:'smile',fx:['check']},
+ {t:'Escribiendo mensaje',u:'Chat con la IA mientras responde.',d:2,b:'bob',pu:'right',m:'small',fx:['typing']},
+ {t:'Siguiente',u:'Botón para pasar a la próxima lección.',d:1.4,b:'walk',l:'run~',r:'run',pu:'right',m:'grin',fx:['arrow']}
+]],
+['rep','Reposo',[
+ 'reposo','durmiendo',
+ {t:'Bostezo',u:'Sesión muy larga: sugiere descansar.',d:4,b:'stretch',l:'stretchUp',r:'stretchUp',sw:{e:'closed',m:'yawn',a:25,b:65}},
+ {t:'Flotando en el espacio',u:'Fondo de la web del planeta.',d:6,b:'floatHigh',pu:'look',m:'smile',l:'out',r:'out',fx:['sparkle']},
+ {t:'Bailando',u:'Pantalla de música o celebración suave.',d:2,b:'dance',l:'dance',r:'dance~',e:'happy',m:'grin',fx:['notes']},
+ {t:'Meditando',u:'Modo concentración o pausa activa.',d:6,b:'float',e:'closed',m:'smile',l:'out',r:'out',fx:['glow']},
+ {t:'Aburrido',u:'Mucho rato sin tocar la pantalla.',d:4,b:'droop',e:'lids',m:'flat',pu:'right'},
+ {t:'Saltitos',u:'Reposo con energía en el inicio.',d:2.4,b:'hop2',m:'smile'},
+ {t:'Ejercicio',u:'Racha activa: siempre en movimiento.',d:1,b:'walk',l:'run~',r:'run',br:'det',m:'grin'},
+ {t:'Pausa para el café',u:'Descanso entre lecciones.',d:4,b:'breathe',r:'hold',pr:'coffee',e:'closed',m:'smile'}
+]]
+];
+
+/* ---------- construir ---------- */
+const items=[];let gi=0;
+CATS.forEach(([ck,cl,list])=>list.forEach(it=>{
+  if(typeof it==='string'){const o=O[it];items.push({k:it,cat:ck,cl,t:o.t,u:o.u,d:o.d,css:o.css('.cb-'+it),fx:{in:o.in||'',out:o.out||'',back:o.back||''},prop:''});}
+  else{const k='g'+(++gi);const g=gen(it,k);items.push({k,cat:ck,cl,t:it.t,u:it.u,d:it.d||3,css:g.css,fx:g.fx,prop:g.prop});}
+}));
+if(items.length!==100)console.warn('Total',items.length);
+
+const grid=document.getElementById('grid');
+let all=BASE,html='';
+items.forEach((a,i)=>{
+  all+=a.css+'\n';
+  html+=`<article class="card" data-cat="${a.cat}" data-i="${i}"><div class="stage" tabindex="0" role="button" aria-label="Reiniciar ${esc(a.t)}"><span class="num">${String(i+1).padStart(3,'0')}</span><div class="cb cb-${a.k}">${brain('cb-'+a.k,a.fx,a.prop)}</div></div>
+  <div class="meta"><span class="tag">${a.cl}</span><h2>${esc(a.t)}</h2><p>${esc(a.u)}</p><div class="row"><span class="dur">${a.d} s</span><button type="button" data-i="${i}">Copiar código</button></div></div></article>`;
+});
+document.getElementById('anim-css').textContent=all;
+grid.innerHTML=html;
+
+/* filtros */
+const nav=document.getElementById('filters');
+const counts={};items.forEach(a=>counts[a.cat]=(counts[a.cat]||0)+1);
+nav.innerHTML=`<button type="button" data-f="all" aria-pressed="true">Todas<span class="n">100</span></button>`+CATS.map(([k,l])=>`<button type="button" data-f="${k}" aria-pressed="false">${l}<span class="n">${counts[k]}</span></button>`).join('');
+nav.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  nav.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));
+  grid.querySelectorAll('.card').forEach(c=>c.hidden=!(b.dataset.f==='all'||c.dataset.cat===b.dataset.f));});
+
+/* pausar lo que no se ve */
+const io=new IntersectionObserver(es=>es.forEach(e=>e.target.classList.toggle('off',!e.isIntersecting)),{rootMargin:'120px'});
+grid.querySelectorAll('.card').forEach(c=>{c.classList.add('off');io.observe(c);});
+
+/* reiniciar y copiar */
+const restart=st=>{const cb=st.querySelector('.cb');cb.replaceWith(cb.cloneNode(true));};
+grid.addEventListener('click',e=>{
+  const b=e.target.closest('button[data-i]');
+  if(b){const a=items[+b.dataset.i];copy(`<!-- Cerebrito Omni Voy · ${a.t} -->\n<style>\n${BASE}${a.css}\n</style>\n<div class="cb cb-${a.k}" style="width:220px">\n${brain('cb-'+a.k,a.fx,a.prop)}\n</div>`,b);return;}
+  const st=e.target.closest('.stage');if(st)restart(st);
+});
+grid.addEventListener('keydown',e=>{const st=e.target.closest('.stage');if(st&&(e.key==='Enter'||e.key===' ')){e.preventDefault();restart(st);}});
+const toast=document.getElementById('toast');
+function show(m){toast.textContent=m;toast.classList.add('on');clearTimeout(show.t);show.t=setTimeout(()=>toast.classList.remove('on'),1600);}
+function copy(text,btn){
+  const fb=()=>{const m=btn.closest('.meta');let ta=m.querySelector('textarea');
+    if(!ta){ta=document.createElement('textarea');ta.className='fallback';ta.readOnly=true;m.appendChild(ta);}
+    ta.value=text;ta.focus();ta.select();show('Selecciona y copia el código');};
+  try{navigator.clipboard.writeText(text).then(()=>show('Código copiado'),fb);}catch(e){fb();}
+}
+const pb=document.getElementById('pause');
+const setP=v=>{document.body.classList.toggle('paused',v);pb.textContent=v?'Reproducir todo':'Pausar todo';};
+pb.addEventListener('click',()=>setP(!document.body.classList.contains('paused')));
+if(matchMedia('(prefers-reduced-motion: reduce)').matches){
+  const s=document.getElementById('anim-css');s.textContent=s.textContent.replace('@media (prefers-reduced-motion:reduce){.cb *{animation:none!important}}','');setP(true);}
+})();
+</script>
+
+</body></html>
